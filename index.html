@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8. 데이터의 세계</title>
+<style>
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+    --bg-void: #08090d;
+    --bg-surface: #0e1019;
+    --bg-elevated: #141722;
+    --bg-card: #181c2a;
+    --bg-glass: rgba(20, 23, 34, 0.75);
+    --border-subtle: rgba(255,255,255,0.04);
+    --border-dim: rgba(255,255,255,0.08);
+    --border-accent: rgba(129,140,248,0.3);
+    --text-primary: #eaedf3;
+    --text-secondary: #8b95a8;
+    --text-muted: #5a6478;
+    --accent: #818cf8;
+    --accent-glow: rgba(129,140,248,0.15);
+    --accent-bright: #a5b4fc;
+    --gold: #f0c040;
+    --gold-dim: rgba(240,192,64,0.12);
+    --green: #6ee7a0;
+    --green-dim: rgba(110,231,160,0.1);
+    --red: #f87171;
+    --red-dim: rgba(248,113,113,0.1);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: 'Noto Sans KR', -apple-system, sans-serif;
+    background: var(--bg-void);
+    color: var(--text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+
+/* 배경 그라디언트 앰비언트 */
+body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: -1;
+    background:
+        radial-gradient(ellipse 80% 50% at 20% 0%, rgba(129,140,248,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(240,192,64,0.03) 0%, transparent 50%);
+}
+
+/* ========== 오디오 바 (Glass Morphism) ========== */
+#audio-bar {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 14px 24px;
+}
+#audio-controls {
+    display: flex; align-items: center; gap: 14px;
+    max-width: 860px; margin: 0 auto;
+}
+#play-btn {
+    background: var(--accent);
+    border: none; color: #fff;
+    width: 40px; height: 40px; border-radius: 50%;
+    cursor: pointer; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 20px var(--accent-glow), 0 2px 8px rgba(0,0,0,0.3);
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+#play-btn:hover {
+    background: var(--accent-bright);
+    transform: scale(1.08);
+    box-shadow: 0 0 30px rgba(129,140,248,0.3), 0 4px 12px rgba(0,0,0,0.4);
+}
+.skip-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 32px; height: 32px; border-radius: 50%;
+    cursor: pointer; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+.skip-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+}
+#time-display {
+    color: var(--text-muted); font-size: 12px;
+    min-width: 90px; font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.5px;
+}
+
+/* 커스텀 시크바 */
+#seek-bar {
+    flex: 1; height: 4px;
+    -webkit-appearance: none; appearance: none;
+    background: var(--border-dim);
+    border-radius: 2px; outline: none;
+    cursor: pointer; transition: height 0.15s ease;
+}
+#seek-bar:hover { height: 6px; }
+#seek-bar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent-glow);
+    cursor: pointer;
+    transition: var(--transition);
+}
+#seek-bar::-webkit-slider-thumb:hover {
+    transform: scale(1.3);
+    box-shadow: 0 0 16px rgba(129,140,248,0.4);
+}
+#seek-bar::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%; border: none;
+    background: var(--accent);
+    cursor: pointer;
+}
+
+#speed-select {
+    background: var(--bg-elevated); color: var(--text-secondary);
+    border: 1px solid var(--border-dim);
+    border-radius: 6px; padding: 5px 10px;
+    font-size: 11px; font-family: 'JetBrains Mono', monospace;
+    cursor: pointer; outline: none;
+    transition: var(--transition);
+}
+#speed-select:hover { border-color: var(--accent); }
+
+/* ========== 슬라이드 네비게이션 ========== */
+#slide-nav {
+    display: flex; gap: 3px; padding: 12px 24px;
+    overflow-x: auto; background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+    justify-content: center; flex-wrap: wrap;
+    scrollbar-width: none;
+}
+#slide-nav::-webkit-scrollbar { display: none; }
+
+.nav-dot {
+    width: 34px; height: 30px; border-radius: 6px;
+    border: 1px solid transparent; cursor: pointer;
+    font-size: 11px; font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--transition);
+    position: relative;
+}
+.nav-dot.has-audio {
+    background: rgba(129,140,248,0.08); color: var(--accent);
+    border-color: rgba(129,140,248,0.12);
+}
+.nav-dot.no-audio {
+    background: rgba(255,255,255,0.02); color: var(--text-muted);
+    opacity: 0.5;
+}
+.nav-dot:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+    border-color: var(--accent);
+}
+.nav-dot.active {
+    background: var(--accent); color: #fff;
+    transform: translateY(-2px) scale(1.05); opacity: 1;
+    box-shadow: 0 4px 16px var(--accent-glow);
+    border-color: transparent;
+}
+
+/* 슬라이드 전환 애니메이션 */
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+#slide-content {
+    animation: slideIn 0.35s ease-out;
+}
+
+#slide-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+}
+#slide-id {
+    color: var(--accent); font-size: 11px; letter-spacing: 3px;
+    font-weight: 500; text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+}
+#slide-badge {
+    font-size: 10px; padding: 3px 10px; border-radius: 20px;
+    font-weight: 500; letter-spacing: 0.3px;
+}
+.badge-audio {
+    background: var(--green-dim); color: var(--green);
+    border: 1px solid rgba(110,231,160,0.15);
+}
+.badge-no-audio {
+    background: var(--red-dim); color: var(--red);
+    border: 1px solid rgba(248,113,113,0.12);
+}
+
+#slide-title {
+    font-size: 26px; font-weight: 900; color: #fff;
+    margin-bottom: 32px; line-height: 1.5;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-dim);
+    letter-spacing: -0.3px;
+}
+
+/* ========== 슬라이드 콘텐츠 블록 ========== */
+
+.slide-text {
+    color: var(--text-secondary); font-size: 14.5px;
+    line-height: 2; margin-bottom: 20px;
+    font-weight: 300;
+}
+.slide-text strong {
+    color: var(--gold); font-weight: 500;
+    background: var(--gold-dim);
+    padding: 1px 5px; border-radius: 3px;
+}
+.slide-text em {
+    color: var(--accent-bright); font-style: normal; font-weight: 400;
+}
+
+/* 인용 블록 */
+.slide-quote {
+    background: var(--bg-card);
+    border-left: 2px solid var(--accent);
+    padding: 18px 22px; margin-bottom: 16px;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--text-primary); font-size: 14px;
+    line-height: 1.85; font-weight: 300;
+}
+.slide-quote strong {
+    color: var(--gold); font-weight: 500;
+}
+
+/* 포인트 리스트 */
+.slide-points {
+    list-style: none; margin-bottom: 20px; padding-left: 0;
+    display: flex; flex-direction: column; gap: 6px;
+}
+.slide-points li {
+    position: relative;
+    padding: 12px 16px 12px 36px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    font-size: 13.5px; line-height: 1.7;
+    color: var(--text-secondary); font-weight: 300;
+    border: 1px solid var(--border-subtle);
+    transition: var(--transition);
+}
+.slide-points li:hover {
+    border-color: var(--border-accent);
+    background: var(--bg-card);
+}
+.slide-points li::before {
+    content: '';
+    position: absolute; left: 15px; top: 50%;
+    transform: translateY(-50%);
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent-glow);
+}
+.slide-points li strong {
+    color: var(--gold); font-weight: 500;
+}
+
+/* 노트 블록 (aside) */
+.slide-note {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius);
+    padding: 18px 20px; margin-top: 28px;
+    position: relative; overflow: hidden;
+}
+.slide-note::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--gold), var(--accent));
+    opacity: 0.5;
+}
+.note-icon { font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+.note-content {
+    color: var(--text-secondary); font-size: 13px;
+    line-height: 1.8; font-weight: 300;
+}
+.note-content strong { color: var(--text-primary); font-weight: 500; }
+
+/* 이미지 */
+.slide-image {
+    margin-bottom: 20px; text-align: center;
+}
+.slide-image img {
+    max-width: 100%; border-radius: var(--radius);
+    border: 1px solid var(--border-dim);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+/* ========== 정의 카드 (> **제목** 본문 패턴) ========== */
+.slide-def-card {
+    background: var(--bg-card);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 18px 22px;
+    margin-bottom: 12px;
+    transition: var(--transition);
+}
+.slide-def-card:hover {
+    border-left-color: var(--gold);
+    background: rgba(24,28,42,0.9);
+}
+.def-title {
+    color: var(--gold); font-size: 14.5px; font-weight: 700;
+    margin-bottom: 8px; letter-spacing: 0.2px;
+}
+.def-desc {
+    color: var(--text-secondary); font-size: 13.5px;
+    line-height: 1.8; font-weight: 300;
+}
+.def-desc strong { color: var(--text-primary); font-weight: 500; }
+
+/* ========== 섹션 카드 (**볼드 헤더** + 본문) ========== */
+.slide-card {
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    padding: 16px 20px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border-subtle);
+    transition: var(--transition);
+}
+.slide-card:hover {
+    border-color: var(--border-accent);
+    transform: translateX(3px);
+}
+.card-heading {
+    color: var(--gold); font-size: 14px; font-weight: 700;
+    margin-bottom: 6px; display: flex; align-items: center; gap: 8px;
+}
+.card-heading::before {
+    content: ''; display: inline-block;
+    width: 3px; height: 14px;
+    background: var(--accent); border-radius: 2px;
+    flex-shrink: 0;
+}
+.card-desc {
+    color: var(--text-secondary); font-size: 13px;
+    line-height: 1.8; font-weight: 300;
+    padding-left: 11px;
+}
+.card-desc strong { color: var(--text-primary); font-weight: 500; }
+.card-desc em { color: var(--accent-bright); font-style: normal; }
+
+/* ========== 오디오 구간 맵 (재생바 아래 타임라인) ========== */
+#audio-map {
+    max-width: 860px; margin: 8px auto 0;
+    height: 22px;
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--bg-elevated);
+}
+.map-segment {
+    position: absolute; top: 0; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    transition: filter 0.15s;
+    overflow: hidden;
+    white-space: nowrap;
+    border-right: 1px solid var(--bg-void);
+}
+.map-segment:hover {
+    filter: brightness(1.3);
+    z-index: 1;
+}
+.map-segment.active {
+    filter: brightness(1.4);
+    color: #fff;
+    font-weight: 700;
+}
+/* 구간별 색상 (순서대로 순환) */
+.map-segment:nth-child(odd)  { background: rgba(129,140,248,0.35); }
+.map-segment:nth-child(even) { background: rgba(240,192,64,0.25); }
+.map-gap {
+    position: absolute; top: 0; height: 100%;
+    background: var(--bg-elevated);
+}
+
+/* ========== 메인 레이아웃 (콘텐츠 + 인덱스) ========== */
+#main-layout {
+    display: flex;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+#slide-area {
+    flex: 1;
+    min-width: 0;
+}
+#slide-container {
+    max-width: 800px; margin: 0 auto;
+    padding: 40px 28px 80px;
+}
+
+/* ========== 인덱스 패널 (우측 사이드바) ========== */
+#index-panel {
+    width: 240px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+    position: sticky;
+    top: 80px;
+    height: calc(100vh - 80px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-dim) transparent;
+}
+#index-panel::-webkit-scrollbar { width: 4px; }
+#index-panel::-webkit-scrollbar-thumb { background: var(--border-dim); border-radius: 2px; }
+
+#index-header {
+    padding: 16px 16px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.index-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: var(--transition);
+    border-left: 2px solid transparent;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.index-item:hover {
+    background: var(--bg-elevated);
+    border-left-color: var(--border-accent);
+}
+.index-item.active {
+    background: var(--bg-card);
+    border-left-color: var(--accent);
+}
+.index-item .idx-id {
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    flex-shrink: 0;
+    min-width: 28px;
+}
+.index-item .idx-title {
+    color: var(--text-secondary);
+    font-weight: 300;
+}
+.index-item.active .idx-title {
+    color: var(--text-primary);
+    font-weight: 400;
+}
+.index-item.has-audio .idx-id::after {
+    content: ' ♪';
+    color: var(--green);
+    font-size: 8px;
+}
+
+/* ========== 반응형 ========== */
+@media (max-width: 900px) {
+    #index-panel { display: none; }
+    #main-layout { display: block; }
+}
+@media (max-width: 640px) {
+    /* 오디오 바 */
+    #audio-bar { padding: 10px 12px; }
+    #audio-controls { gap: 6px; }
+    #play-btn { width: 36px; height: 36px; font-size: 14px; }
+    .skip-btn { width: 30px; height: 30px; font-size: 11px; }
+    #time-display { min-width: 70px; font-size: 10px; }
+    #speed-select { padding: 4px 6px; font-size: 10px; }
+
+    /* 네비게이션 도트: 가로 스크롤 */
+    #slide-nav {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        padding: 8px 12px;
+        gap: 2px;
+    }
+    .nav-dot { width: 28px; height: 26px; font-size: 9px; flex-shrink: 0; }
+
+    /* 슬라이드 영역 */
+    #slide-container { padding: 20px 14px 80px; }
+    #slide-title { font-size: 20px; margin-bottom: 20px; padding-bottom: 14px; }
+    #slide-header { gap: 8px; margin-bottom: 8px; }
+    #slide-id { font-size: 10px; }
+    #slide-badge { font-size: 9px; padding: 2px 8px; }
+
+    /* 콘텐츠 블록 */
+    .slide-text { font-size: 13.5px; line-height: 1.9; }
+    .slide-card { padding: 16px; }
+    .slide-def-card { padding: 14px; }
+    .slide-note { padding: 14px 16px; font-size: 12.5px; }
+    .slide-points li { font-size: 13.5px; }
+    .slide-image img { max-height: 50vh; }
+
+    /* 자막 바 */
+    #subtitle-bar { padding: 10px 14px; }
+    #subtitle-text { font-size: 0.9rem; }
+}
+
+/* 자막 바 */
+#subtitle-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    padding: 14px 24px;
+    background: rgba(0, 0, 0, 0.82);
+    z-index: 1000;
+    pointer-events: none;
+    min-height: 24px;
+}
+
+#subtitle-text {
+    color: #f0f0f0;
+    font-size: 1.05rem;
+    line-height: 1.5;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+    transition: opacity 0.15s ease;
+}
+
+#subtitle-bar:empty,
+#subtitle-bar:has(#subtitle-text:empty) {
+    opacity: 0;
+}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="audio-bar">
+    <audio id="audio" src="게임의_뼈대를_세우는_정교한_데이터_설계.m4a" preload="auto"></audio>
+    <div id="audio-controls">
+      <button class="skip-btn" onclick="skipTime(-10)">⏪</button>
+      <button id="play-btn" onclick="togglePlay()">▶</button>
+      <button class="skip-btn" onclick="skipTime(10)">⏩</button>
+      <span id="time-display">0:00 / 0:00</span>
+      <input type="range" id="seek-bar" min="0" max="86400" value="0" step="0.1">
+      <select id="speed-select" onchange="changeSpeed(this.value)">
+        <option value="0.75">0.75x</option>
+        <option value="1" selected>1x</option>
+        <option value="1.25">1.25x</option>
+        <option value="1.5">1.5x</option>
+        <option value="2">2x</option>
+      </select>
+    </div>
+    <div id="audio-map"></div>
+  </div>
+  <div id="slide-nav"></div>
+  <div id="main-layout">
+    <div id="slide-area">
+      <div id="slide-container">
+        <div id="slide-header">
+          <span id="slide-id"></span>
+          <span id="slide-badge"></span>
+        </div>
+        <h1 id="slide-title"></h1>
+        <div id="slide-content"></div>
+      </div>
+    </div>
+    <div id="index-panel">
+      <div id="index-header">목차</div>
+      <div id="index-list"></div>
+    </div>
+  </div>
+</div>
+<div id="subtitle-bar">
+  <span id="subtitle-text"></span>
+</div>
+<script>
+const SLIDES = [
+  {
+    "id": "P1",
+    "title": "“어떤 정보가 필요한가?”",
+    "content": "<div class=\"slide-text\">게임을 설계할 때 가장 먼저 던져야 할 질문이다.<br>필요한 정보를 정의하는 것이 데이터 설계의 첫 걸임다.</div>",
+    "hasAudio": true,
+    "start": 0.0,
+    "end": 100.0
+  },
+  {
+    "id": "P2",
+    "title": "데이터",
+    "content": "<div class=\"slide-image\"><img src=\"data:image/png;base64,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\" alt=\"강의 이미지\"></div>\n<div class=\"slide-quote\">컴퓨터가 처리할 수 있도록 정해진  형식으로 만든 것</div>\n<div class=\"slide-text\">예를 들어, 걸그룹 멤버 정보를 데이터로 정리하면 다음과 같다.</div>\n<div class=\"slide-text\"></div>\n<div class=\"slide-note\"><div class=\"note-icon\">💡</div><div class=\"note-content\"><strong>데이터 타입을 지정하는 이유</strong>: 효율적인 자료 관리 및 저장 공간을 줄이기 위해서다. 숫자는 숫자로, 날짜는 날짜로 저장해야 컴퓨터가 빠르게 처리할 수 있다.</div></div>",
+    "hasAudio": true,
+    "start": 100.0,
+    "end": 155.0
+  },
+  {
+    "id": "P3",
+    "title": "데이터 타입",
+    "content": "<div class=\"slide-text\">데이터에는 다양한 형태(Type)가 있으며, 각 타입에 맞게 저장해야 한다.</div>\n<div class=\"slide-text\"></div>\n<div class=\"slide-card\"><div class=\"card-heading\">숫자</div><div class=\"card-desc\">정수, 실수 등 수치 데이터</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">날짜</div><div class=\"card-desc\">날짜 및 시간 정보</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">문자</div><div class=\"card-desc\">이름, 설명 등 텍스트</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">바이너리 (2진수)</div><div class=\"card-desc\">파일, 이미지 등</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">화폐</div><div class=\"card-desc\">금액 데이터</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">특수 (UID, 타임)</div><div class=\"card-desc\">고유 식별자, 타임스태프</div></div>",
+    "hasAudio": true,
+    "start": 149.0,
+    "end": 215.0
+  },
+  {
+    "id": "P4",
+    "title": "데이터 스트럭쳐",
+    "content": "<div class=\"slide-quote\">자료를 효율적으로 저장하고 사용하기 쉽게 만드는 작업</div>\n<div class=\"slide-text\"></div>\n<div class=\"slide-text\">흩어진 정보를 <strong>분류→구성→저장</strong>하는 과정이 바로 데이터 구조화다.</div>\n<div class=\"slide-card\"><div class=\"card-heading\">Q</div><div class=\"card-desc\">: 그렇다면 클래스 다이어그램으로 흩어진 데이터를 모은다는 것인가?</div></div>\n<div class=\"slide-text\"></div>",
+    "hasAudio": true,
+    "start": 215.0,
+    "end": 280.0
+  },
+  {
+    "id": "P5",
+    "title": "용어 정리",
+    "content": "<div class=\"slide-text\">같은 개념이지만 현업에서 쓰는 용어가 조금씩 다르다.</div>\n<div class=\"slide-card\"><div class=\"card-heading\">데이터=자료</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">데이터 타입=자료형</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">데이터 구조=자료구조</div></div>\n<div class=\"slide-note\"><div class=\"note-icon\">💡</div><div class=\"note-content\">프로그래머들은 ‘<strong>자료</strong>’보다 ‘<strong>데이터</strong>’라는 말을 선호한다. ‘자료’는 가공 전 원자료(Raw Data), ‘데이터’는 정보(Information)를 만들 수 있는 형태로 구분하기 때문이다.</div></div>",
+    "hasAudio": true,
+    "start": 255.0,
+    "end": 300.0
+  },
+  {
+    "id": "P6",
+    "title": "어떤 것이 좋은 자료 구조일까?",
+    "content": "<div class=\"slide-text\"></div>\n<div class=\"slide-text\">오른쪽이 검색/수정/관리에 훨신 용이하다</div>",
+    "hasAudio": true,
+    "start": 280.0,
+    "end": 310.0
+  },
+  {
+    "id": "P7",
+    "title": "데이터 구조의 종류",
+    "content": "<div class=\"slide-text\">데이터 구조는 크게 <strong>선형 구조</strong>와 <strong>비선형 구조</strong>로 나뉜다.</div>\n<div class=\"slide-text\"></div>",
+    "hasAudio": true,
+    "start": 293.0,
+    "end": 350.0
+  },
+  {
+    "id": "P8",
+    "title": "리스트",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">배열 형태</div><div class=\"card-desc\">로 저장되는 연속적인 데이터 구조</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">배열(Array)</div><div class=\"card-desc\">연관된 데이터를 그룹으로 묶어 관리하는 방법</div></div>\n<ul class=\"slide-points\"><li>데이터 처리는 <strong>순서대로</strong> 진행</li><li>검색 속도는 빠르지만 <strong>중간 삽입/삭제가 느림</strong> <strong>Ex)</strong> 기차 좌석, 출석부</li></ul>\n<div class=\"slide-text\"></div>",
+    "hasAudio": true,
+    "start": 294.0,
+    "end": 350.0
+  },
+  {
+    "id": "P9",
+    "title": "스택",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">쌓는 형태</div><div class=\"card-desc\">의 데이터 구조로, 마지막에 넣은 것을 먼저 꺼낸다. (순서 O)</div></div>\n<div class=\"slide-text\"></div>\n<div class=\"slide-card\"><div class=\"card-heading\">LIFO</div><div class=\"card-desc\">: Last In, First Out → <strong>선입후출</strong></div></div>\n<div class=\"slide-text\">쌓아 놓은 접시를 생각해보자. 맨 위의 접시부터 꺼내야 한다. 옷을 입고 벗는 것도 같은 원리이다.</div>\n<div class=\"slide-card\"><div class=\"card-heading\">Ex)</div><div class=\"card-desc\">뒤로가기, 작업 취소</div></div>",
+    "hasAudio": true,
+    "start": 350.0,
+    "end": 400.0
+  },
+  {
+    "id": "P10",
+    "title": "큐",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">먼저 온 데이터부터</div><div class=\"card-desc\">처리하는 구조. 줄서기와 같은 원리 (순서 O)</div></div>\n<div class=\"slide-text\"></div>\n<div class=\"slide-card\"><div class=\"card-heading\">FIFO</div><div class=\"card-desc\">: First In, First Out</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">Ex)</div><div class=\"card-desc\">서비스 센터 대기열, 놀이기구 줄서기</div></div>",
+    "hasAudio": true,
+    "start": 400.0,
+    "end": 445.0
+  },
+  {
+    "id": "P11",
+    "title": "트리",
+    "content": "<div class=\"slide-quote\">계층적으로 연결이 필요한 자료를 저장하는 데이터 구조</div>\n<ul class=\"slide-points\"><li>뿌리(Root)와 가지(Branch)로 구성</li><li>스킬 트리, 퀘스트 등 하위 구조가 복잡해지거나 항목 별 저장값이 제각각일 때 사용</li><li>Lua 스크립트, HTML, XML 등의 형태로 저장 가능</li></ul>",
+    "hasAudio": true,
+    "start": 429.0,
+    "end": 470.0
+  },
+  {
+    "id": "P12",
+    "title": "데이터의 관리",
+    "content": "<div class=\"slide-text\">상황에 따라 적합한 데이터 구조를 선택하는 것이 핵심이다.</div>\n<div class=\"slide-card\"><div class=\"card-heading\">리스트형 데이터</div><div class=\"card-desc\">서버 접근 및 입출력이 빈번하고 수시로 수정되어야 하는 경우 사용</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">큐형 데이터</div><div class=\"card-desc\">여러 데이터가 임시적으로 생성/소멸되는 형태일 경우 사용</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">트리형 데이터</div><div class=\"card-desc\">데이터 입력 권한이 제한적이고 구조가 복잡한 경우 사용</div></div>",
+    "hasAudio": true,
+    "start": 340.0,
+    "end": 470.0
+  },
+  {
+    "id": "P13",
+    "title": "데이터베이스",
+    "content": "<div class=\"slide-text\">게임의 데이터를 체계적으로 저장하고 관리하는 방법을 알아보자</div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  },
+  {
+    "id": "P14",
+    "title": "게임의 데이터 관리",
+    "content": "<div class=\"slide-text\">게임 회사에서기획자의 데이터 작업은 주로 <strong>엑셀</strong>과 <strong>~~SQL~~</strong>을 활용한 테이블 작성 및 관리이다.</div>\n<ul class=\"slide-points\"><li>가장 <strong>범용적인</strong> 데이터 관리 방식</li><li>다른 자료 구조로의 <strong>변환이 용이</strong></li><li>팀원 간 <strong>공유와 협업</strong>이 쉬움</li></ul>\n<div class=\"slide-text\"></div>\n<div class=\"slide-card\"><div class=\"card-heading\">테이블</div><div class=\"card-desc\">: 행과 열을 가진 데이터구조 = 데이터 베이스(중 하나) 테이블 구조: <strong>행과 열</strong>, <strong>프라이머리 키(ID)</strong>, <strong>값</strong></div></div>\n<div class=\"slide-text\">*테이블에서는 왠만해선 boolean을 쓰지 않는다 → 애초에 Class에 묶인 속성은 해당 객체들이 갖고 있는 카테고리이기 때문.<br><strong>단, 거래불가/귀속 여부/창고 보관과 같은 경우는 사용하기도 한다!</strong></div>\n<div class=\"slide-card\"><div class=\"card-heading\">테이블의 장점</div><div class=\"card-desc\">편리한 데이터 관리 (유지보수) 게임의 데이터를 기획자가 관리 프로그램팀의 업무 감소 신입 기획자의 첫번째 업무</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">게임에서 사용되는 테이블</div><div class=\"card-desc\">캐릭터, 무기, 방어구, 아이템, 퀘스트, 몬스터, 맵, 제작,이벤트 , 등등</div></div>\n<div class=\"slide-text\">*테이블이 너무 많아도 복잡해지기에, 적당히 쪼개야 한다! (<strong>Ex:</strong> 무기와 방어구)</div>\n<div class=\"slide-card\"><div class=\"card-heading\">중복되지 않으며 추가가 용이한 ID 생성 규칙은?</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">ID를 행 번호 또는 숫자로 순서대로 사용할 때의 문제점</div></div>\n<ul class=\"slide-points\"><li>테이블 중간에 아이템을 추가하기 어렵다.</li><li>테이블을 관리하기 어려워진다.</li></ul>\n<div class=\"slide-card\"><div class=\"card-heading\">ID를 String 타입으로 지정한다면?</div></div>\n<ul class=\"slide-points\"><li>자유로운 네이밍</li><li>테이블 관리가 쉽다</li><li>But 한글 ID 불가 / 보안 이슈</li></ul>\n<div class=\"slide-card\"><div class=\"card-heading\">ID 정규화 (ID 생성 규칙!)</div></div>\n<ul class=\"slide-points\"><li>숫자를 이용하여 ID 생성 규칙을 만든다</li><li>고유키가 유지되면서 ID를 유추할 수 있다</li><li>아이템의 ID만 확인해도 해당 아이템의 개괄적인 속성을 파악할 수 있다. <strong>Ex)</strong> 빨간물약: 11111060 / 파란물약: 11111150</li></ul>\n<div class=\"slide-text\"></div>\n<div class=\"slide-card\"><div class=\"card-heading\">테이블 수정 :</div><div class=\"card-desc\">아이템이 주는 효과를 따로 분리하여 신규 객체의 기획이 간단해진다</div></div>\n<div class=\"slide-text\"></div>\n<div class=\"slide-card\"><div class=\"card-heading\">Ex)</div><div class=\"card-desc\">기간제 포션 사용</div></div>\n<div class=\"slide-text\"></div>\n<div class=\"slide-text\">→ <strong>이펙트 쌀먹 가능!</strong></div>\n<div class=\"slide-note\"><div class=\"note-icon\">💡</div><div class=\"note-content\">[주의할 점]<br><strong>서비스가 시작되면 고유키(ID값)는 변경할 수 없다.</strong><br>- DB에 저장된 ID로 아이템을 검색<br>- ID가 변경되면 찾을 수 없다<br>- 경우에 따라선 게임이 셧다운 될 수도 있다.<br>(체력 물약의 속성을 찾으려고 원래 ID를 검색하는데 안나와! 나올때까지 계속 찾아!)</div></div>",
+    "hasAudio": true,
+    "start": 470.0,
+    "end": 565.0
+  },
+  {
+    "id": "P15",
+    "title": "데이터베이스",
+    "content": "<div class=\"slide-text\">게임 정보 중 유동적인 내용들이 서버에 저장된다. 생각보다 정말 많은 것들이 DB에 들어간다.</div>\n<div class=\"slide-card\"><div class=\"card-heading\">유저 정보</div><div class=\"card-desc\">: 접속 기록, 계정 데이터</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">캐릭터 성장</div><div class=\"card-desc\">: 레벨, 경험치, 스킬</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">아이템 데이터</div><div class=\"card-desc\">: 인챈트, 내구도, 인벤토리</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">경제&소셜</div><div class=\"card-desc\">: 골드, 길드원 목록, 거래 내역</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">게임 로그</div><div class=\"card-desc\">: 행동 기록, 이벤트 로그 등</div></div>\n<div class=\"slide-text\">*테이블에는 유저가 절대로 바꿀 수 없는 <strong>‘구현</strong>’의 영역에 있는 값만 들어간다!</div>",
+    "hasAudio": true,
+    "start": 545.0,
+    "end": 610.0
+  },
+  {
+    "id": "P16",
+    "title": "테이블 작업이 필요한 이유",
+    "content": "<div class=\"slide-text\">왜 기획자가 데이터 테이블을 직접 설계해야 할까?</div>\n<ul class=\"slide-points\"><li><strong>기본 구조 정의</strong> 클라이언트 및 서버 데이터의 기본 구조가 필요하다.</li><li><strong>최소 정보 파악</strong> 모든 데이터들은 최소한의 정보를 가지고 있으며, 각 데이터마다 요소가 다르다.</li><li><strong>데이터 연동</strong> 클라이언트와 서버 간의 데이터 연동이 정확해야 한다.</li><li><strong>검증과 관리</strong> 중요한 데이터의 검증 - 정보는 누가 관리하는가?</li></ul>",
+    "hasAudio": true,
+    "start": 600.0,
+    "end": 625.0
+  },
+  {
+    "id": "P17",
+    "title": "데이터 테이블",
+    "content": "<div class=\"slide-text\">테이블은 클라이언트용과 서버용으로 구분된다. 어떤 데이터를 어디에 저장할지 아는 것이 핵심이다.<br>(옛날에는 그랬다!)</div>\n<div class=\"slide-card\"><div class=\"card-heading\">클라이언트 테이블</div><div class=\"card-desc\">데이터가  <strong>고정</strong>인 것들</div></div>\n<ul class=\"slide-points\"><li>캐릭터 능력치</li><li>아이템 능력치</li><li>캐릭터 스킬 정보</li></ul>\n<div class=\"slide-card\"><div class=\"card-heading\">서버 테이블</div><div class=\"card-desc\">데이터가 <strong>유동적</strong>인 것들</div></div>\n<ul class=\"slide-points\"><li>캐릭터 레벨 및 경험치</li><li>재화, 인벤토리 아이템</li><li>친구,길드 정보</li><li>아이템 강화, 소켓, 내구도</li></ul>\n<div class=\"slide-note\"><div class=\"note-icon\">💡</div><div class=\"note-content\">과거와 달리 해킹 등의 이유로 데이터 테이블은 모두 서버에 저장하는 추세다.</div></div>",
+    "hasAudio": true,
+    "start": 545.0,
+    "end": 610.0
+  },
+  {
+    "id": "P18",
+    "title": "테이블 종류",
+    "content": "<div class=\"slide-text\">테이블의 종류는 기획자의 의도와 클라이언트 담당자의 작업 방식에 따라 유동적으로 변경될 수 있다.</div>\n<div class=\"slide-card\"><div class=\"card-heading\">게임 시스템별 분류</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">캐릭터 시스템</div><div class=\"card-desc\">→ 캐릭터 테이블</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">아이템 시스템</div><div class=\"card-desc\">→ 아이템 테이블</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">강화 시스템</div><div class=\"card-desc\">→ 강화 테이블</div></div>\n<div class=\"slide-note\"><div class=\"note-icon\">💡</div><div class=\"note-content\"><strong>테이블 간 연동 가능</strong><br><strong>Ex)</strong> 몬스터 테이블에 AI/스킬 테이블 연동<br><strong>Ex)</strong> 퀘스트 테이블에 보상 테이블 연동</div></div>",
+    "hasAudio": true,
+    "start": 560.0,
+    "end": 600.0
+  },
+  {
+    "id": "P19",
+    "title": "테이블 구조 작업",
+    "content": "<div class=\"slide-text\">케이블을 만들기 전, 해당 시스템에 대한 이해도를 높이는 것이 가장 중요하다.</div>\n<div class=\"slide-card\"><div class=\"card-heading\">1. 시스템 분석</div><div class=\"card-desc\">작업할 시스템의 이해도를 충분히 높이기</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">2. 정보 분류</div><div class=\"card-desc\">꼭 필요한 정보를 데이터 스트럭쳐 기반으로 분류</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">3. 컬럼 구성</div><div class=\"card-desc\">분류한 정보가 값을 입력할 수  있는 컬럼(세로라인)이 됨</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">4. 우선순위 배치</div><div class=\"card-desc\">컬럼마다 우선순위를 정해 왼쪽부터 배치</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">5. 타입&범위 설정</div><div class=\"card-desc\">컬럼별 데이터 타입과 최소값/최대값을 설정</div></div>",
+    "hasAudio": true,
+    "start": 610.0,
+    "end": 660.0
+  },
+  {
+    "id": "P20",
+    "title": "테이블 구조 작업 - 핵심 규칙",
+    "content": "<div class=\"slide-text\">실무에서 반드시 지켜야 할 테이블 설계 규칙들을 정리한다</div>\n<div class=\"slide-def-card\"><div class=\"def-title\">첫 번째 컬럼은 무조건 ID</div><div class=\"def-desc\">데이터의 식별번호(Key값). ID가 없으면 처리와 관리가 어렵다.</div></div>\n<div class=\"slide-def-card\"><div class=\"def-title\">영문 이름 부여 필수</div><div class=\"def-desc\">각 컬럼에는 클라이언트/서버에서 구분할 수 있는 영문 이름을 붙여야 한다.</div></div>\n<div class=\"slide-def-card\"><div class=\"def-title\">컬럼 정보 3종 세트</div><div class=\"def-desc\">한글이름, 영문이름, 데이터 타입을 반드시 함께 기재한다.</div></div>\n<div class=\"slide-def-card\"><div class=\"def-title\">설명서 작성</div><div class=\"def-desc\">해당 테이블의 설명서를 꼭 같이 작성해야 팀원들이 이해할 수 있다.</div></div>",
+    "hasAudio": true,
+    "start": 610.0,
+    "end": 660.0
+  },
+  {
+    "id": "P21",
+    "title": "테이블 구조 예제",
+    "content": "<div class=\"slide-card\"><div class=\"card-heading\">실제 게임 데이터 테이블이 어떻게 구성되는지 살펴보자</div></div>\n<div class=\"slide-text\"></div>\n<div class=\"slide-card\"><div class=\"card-heading\">컬럼 구성과 데이터 타입 설정이 어떻게 적용되었는지 확인해보자</div></div>\n<div class=\"slide-text\"></div>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  },
+  {
+    "id": "P22",
+    "title": "절대 하면 안되는 것",
+    "content": "<div class=\"slide-text\">테이블로 기능을 구현하려고 하지 말자. <strong>테이블의 목적은 대량의 데이터를 용이하게 관리하는 것에 있을 뿐</strong><br>시스템 구현은 개발자의 영역이다.</div>\n<div class=\"slide-card\"><div class=\"card-heading\">안좋은 예시1</div><div class=\"card-desc\">: 틱(시간)별로 몬스터가 스폰되는 기능을 테이블로 구현한 경우</div></div>\n<div class=\"slide-card\"><div class=\"card-heading\">안좋은 예시2</div><div class=\"card-desc\">: 한 값에 대해서 컬럼 별로 연산되는 함수를 넣은 경우 (컬럼: 곱연산, 합연산)</div></div>",
+    "hasAudio": true,
+    "start": 640.0,
+    "end": 680.0
+  },
+  {
+    "id": "P23",
+    "title": "과제",
+    "content": "<div class=\"slide-text\">이벤트에 사용할 <strong>아이템 테이블</strong>을 설계하라</div>\n<ul class=\"slide-points\"><li>설날 이벤트에 사용할 아이템: 떡, 계란, 떡국</li><li>떡을 사용하면 HP +100 효과</li><li>계란을 사용하면 MP +200 효과</li><li>떡과 계란을 조합하여 떡국 제작 : HP와 MP 모두 150 회복</li><li>몬스터를 사냥하면 아이템 드랍</li></ul>",
+    "hasAudio": false,
+    "start": null,
+    "end": null
+  }
+];
+const TRANSCRIPT = [{"start": 0.0, "end": 2.72, "text": "청취자님 한번 상상해 보시죠"}, {"start": 2.72, "end": 5.68, "text": "무려 100시간의 고된 레이드 끝에"}, {"start": 5.68, "end": 8.2, "text": "드디어 최종 보스를 쓸어트렸습니다"}, {"start": 8.2, "end": 9.84, "text": "아 정말 짜릿한 순간이죠"}, {"start": 9.84, "end": 12.44, "text": "그쵸 막 화려한 빛 기둥이 솟아오르고"}, {"start": 12.44, "end": 15.68, "text": "바닥에는 전설의 검이 딱 떨어져 있단 말이에요"}, {"start": 15.68, "end": 18.88, "text": "그런데 떨리는 손으로 그걸 줍는 순간"}, {"start": 18.88, "end": 21.0, "text": "화면에 아이템 획득 대신에"}, {"start": 21.0, "end": 24.76, "text": "막 에러코드 11111060 이런게 뜨면서"}, {"start": 24.76, "end": 27.72, "text": "게임이 강제 종료된다면 어떠실 것 같나요?"}, {"start": 27.72, "end": 30.16, "text": "어 아마 키보드가 무사하지 못할 겁니다"}, {"start": 30.16, "end": 32.24, "text": "네 완전히 박살이 나겠죠"}, {"start": 32.24, "end": 34.16, "text": "우리는 늘 화면 속 세상이 진짜"}, {"start": 34.16, "end": 37.44, "text": "살아 숨 쉬는 것처럼 완벽하게 굴러가길 기대하잖아요"}, {"start": 37.44, "end": 38.879999999999995, "text": "맞습니다"}, {"start": 38.879999999999995, "end": 41.2, "text": "하지만 그 완벽한 무력감과 생동감은"}, {"start": 41.2, "end": 43.6, "text": "사실 거저주어지는 것이 아닙니다"}, {"start": 43.6, "end": 45.120000000000005, "text": "아주 정교하게 통제되고"}, {"start": 45.120000000000005, "end": 47.56, "text": "음 치밀하게 계산된 환상이죠"}, {"start": 47.56, "end": 49.72, "text": "유저들이 그 환상을 깨짐없이 즐길 수 있도록"}, {"start": 49.72, "end": 52.84, "text": "뼈들을 세우는 사람들이 바로 게임 기획자들입니다"}, {"start": 52.84, "end": 55.2, "text": "그래서 오늘 우리는 눈앞에서 터지는"}, {"start": 55.2, "end": 57.480000000000004, "text": "화려한 그래픽이나 타격감이라는 껍질을"}, {"start": 57.480000000000004, "end": 59.68000000000001, "text": "완전히 한번 벗겨내 보려고 합니다"}, {"start": 59.68000000000001, "end": 61.720000000000006, "text": "청취자님 오늘 우리의 심층 분석 시간에"}, {"start": 61.720000000000006, "end": 63.2, "text": "오신 것을 환영합니다"}, {"start": 63.2, "end": 64.56, "text": "네 반갑습니다"}, {"start": 64.56, "end": 66.96000000000001, "text": "오늘 청취자님과 함께 해체해 볼 자료는"}, {"start": 66.96000000000001, "end": 69.56, "text": "바로 게임 기획을 처음 배우는 사람들을 위한"}, {"start": 69.56, "end": 72.08, "text": "실전 데이터 설계 강의입니다"}, {"start": 72.08, "end": 74.4, "text": "우리가 몬스터를 잡고 아이템을 얻는"}, {"start": 74.4, "end": 76.32000000000001, "text": "그 즐거운 과정 이면에"}, {"start": 76.32000000000001, "end": 80.2, "text": "현업의 기획자들이 도대체 어떻게 정보를 쪼개고 조립하는지"}, {"start": 80.2, "end": 82.44, "text": "그 거대한 매트릭스 속으로 들어가보는 것이"}, {"start": 82.44, "end": 84.28, "text": "오늘 심층 분석의 미션입니다"}, {"start": 84.28, "end": 85.92, "text": "아주 흥미로운 주제네요"}, {"start": 85.92, "end": 88.36, "text": "이번 자료가 시사하는 반은 명확합니다"}, {"start": 88.36, "end": 90.72, "text": "눈에 보이는 화려한 그래픽 이전에"}, {"start": 90.72, "end": 93.2, "text": "우리 시스템에 도대체 어떤 정보가 필요한가"}, {"start": 93.2, "end": 95.84, "text": "를 묻는 것이 기획의 진짜 첫 걸음이라는 사실을"}, {"start": 95.84, "end": 97.12, "text": "아주 잘 보여주고 있죠"}, {"start": 97.12, "end": 98.68, "text": "좋습니다 그럼 그 첫 걸음인"}, {"start": 98.68, "end": 101.04, "text": "정보의 정의부터 파헤쳐보죠"}, {"start": 101.04, "end": 102.84, "text": "기획에서 정보를 다룬다는 건"}, {"start": 102.84, "end": 104.48, "text": "구체적으로 어떤 의미인가요?"}, {"start": 104.48, "end": 107.08, "text": "네 게임 설계의 첫 걸음은"}, {"start": 107.08, "end": 109.16, "text": "필요한 정보를 정의하고"}, {"start": 109.16, "end": 112.16, "text": "이를 컴퓨터가 효율적으로 처리할 수 있는"}, {"start": 112.16, "end": 115.52, "text": "규격화된 형태인 데이터로 만드는 것입니다"}, {"start": 115.52, "end": 119.44, "text": "어 잠시만요 그게 정확히 무슨 말이에요?"}, {"start": 119.44, "end": 122.47999999999999, "text": "규격화된 형태라는 게 마치 서류를"}, {"start": 122.47999999999999, "end": 125.8, "text": "크기별로 봉투에 따로 닫는 것과 같은 건가요?"}, {"start": 125.8, "end": 129.04, "text": "오 아주 정확하고 훌륭한 비유입니다"}, {"start": 129.04, "end": 131.07999999999998, "text": "맞습니다 예를 들어서"}, {"start": 131.07999999999998, "end": 134.16, "text": "걸그룹 멤버의 데빌이라는 정보를"}, {"start": 134.16, "end": 136.04, "text": "시스템에 넣는다고 가정해 보죠"}, {"start": 136.04, "end": 139.6, "text": "식할 수 있는 날짜라는 명확한 데이터 타입으로"}, {"start": 139.6, "end": 141.16, "text": "지정해서 저장해야"}, {"start": 141.16, "end": 143.84, "text": "컴퓨터가 용량을 훨씬 덜 차지하고"}, {"start": 143.84, "end": 145.48, "text": "빠르게 계산할 수 있습니다"}, {"start": 145.48, "end": 149.8, "text": "아하 그럼 그렇게 용량을 줄이기 위해 지정하는"}, {"start": 149.8, "end": 153.48, "text": "그 데이터 타입에는 구체적으로 어떤 종류들이 있고"}, {"start": 153.48, "end": 155.35999999999999, "text": "또 어떻게 구둔되는 건가요?"}, {"start": 155.35999999999999, "end": 158.51999999999998, "text": "데이터 타입은 정보의 성격에 따라"}, {"start": 158.51999999999998, "end": 163.68, "text": "숫자, 날짜, 문자, 바이너리, 화폐"}, {"start": 163.68, "end": 167.44, "text": "그리고 특수식별자 등으로 형태를 분류한 기준입니다"}, {"start": 167.44, "end": 169.8, "text": "어 근데 그게 정확히 무슨 말이에요?"}, {"start": 169.84, "end": 172.28, "text": "아니 숫자면 다 똑같은 숫자지"}, {"start": 172.28, "end": 175.04000000000002, "text": "왜 굳이 화폐나 특수한 식별자까지"}, {"start": 175.04000000000002, "end": 176.92000000000002, "text": "세세하게 따로 분류해야 하나요?"}, {"start": 176.92000000000002, "end": 179.76000000000002, "text": "이게 사실 굉장히 중요한 포인트인데요"}, {"start": 179.76000000000002, "end": 181.92000000000002, "text": "시스템의 붕괴를 막기 위해서입니다"}, {"start": 181.92000000000002, "end": 182.68, "text": "붕괴요?"}, {"start": 182.68, "end": 185.84, "text": "네 게임 내 주요 재화인 골드를"}, {"start": 185.84, "end": 189.04000000000002, "text": "단순 숫자가 아니라 화폐 타입으로 따로 묶고"}, {"start": 189.04000000000002, "end": 192.0, "text": "또 아이템의 고유번호를 UID"}, {"start": 192.0, "end": 195.32000000000002, "text": "즉 고유식별자로 분리해 두어야만 하거든요"}, {"start": 195.32000000000002, "end": 197.16000000000003, "text": "어 안 그러면 어떻게 되는데요?"}, {"start": 197.16000000000003, "end": 198.76000000000002, "text": "만약 분리하지 않으면"}, {"start": 198.76, "end": 201.79999999999998, "text": "시스템상에서 골드 수치가 한 바퀴를 돌아"}, {"start": 201.79999999999998, "end": 204.79999999999998, "text": "마이너스가 되거나 골드복사버그 같은"}, {"start": 204.79999999999998, "end": 207.51999999999998, "text": "아주 치명적 오류가 발생할 수 있습니다"}, {"start": 207.51999999999998, "end": 211.44, "text": "이런 오류 없이 경제 시스템을 정확히 굴릴 수 있기 때문에"}, {"start": 211.44, "end": 213.0, "text": "철저히 분류하는 거죠"}, {"start": 213.0, "end": 215.92, "text": "어우 듣기만 해도 식은땀이 나네요"}, {"start": 215.92, "end": 218.39999999999998, "text": "그럼 그렇게 각자의 타입표를 달고"}, {"start": 218.39999999999998, "end": 223.12, "text": "쪼개진 무수히 많은 정보들은 굉장히 산발적일 텐데"}, {"start": 223.12, "end": 225.92, "text": "이 화폐나 텐 데이터들은 어떻게 하나로 묶여서"}, {"start": 225.92, "end": 227.6, "text": "구조를 잡게 되는 건가요?"}, {"start": 227.6, "end": 231.35999999999999, "text": "그 시점에서 이제 흩어진 가공전의 원자료"}, {"start": 231.35999999999999, "end": 234.07999999999998, "text": "그러니까 로데이터를 분류하고 구성해서"}, {"start": 234.07999999999998, "end": 236.28, "text": "나중에 검색이나 수정이 쉽도록"}, {"start": 236.28, "end": 239.32, "text": "유의미한 정보에 틀로 짜는 작업이 들어갑니다"}, {"start": 239.32, "end": 242.68, "text": "이게 바로 데이터 스트럭쳐 즉 자료 구조입니다"}, {"start": 242.68, "end": 244.68, "text": "그게 정확히 무슨 말이에요?"}, {"start": 244.68, "end": 249.79999999999998, "text": "프로그래머들이 자료라는 말 대신 데이터라는 말을 더 좋아한다고 하던데"}, {"start": 249.79999999999998, "end": 254.16, "text": "그냥 묶어두는 것과 구조를 짠다는 건 어떤 차이가 있는 거죠?"}, {"start": 254.16, "end": 256.32, "text": "음 이렇게 생각해 보시죠"}, {"start": 256.32, "end": 260.08, "text": "온갖 잡동산이를 상자에 마구잡이로 던져두는 게"}, {"start": 260.08, "end": 262.24, "text": "가공전의 자료라면요"}, {"start": 262.24, "end": 264.32, "text": "클래스 다이어램 같은 도구를 써서"}, {"start": 264.32, "end": 266.0, "text": "무기는 무기 카테고리"}, {"start": 266.0, "end": 268.0, "text": "방어구는 방어구 카테고리별로"}, {"start": 268.0, "end": 272.44, "text": "서랍장을 짜고 이름표를 딱딱 붙여두는 것이 데이터 스트럭쳐입니다"}, {"start": 272.44, "end": 274.64, "text": "아 서랍장을 짜는 거군요?"}, {"start": 274.64, "end": 275.64, "text": "맞습니다"}, {"start": 275.64, "end": 278.12, "text": "그래야 나중에 특정 아이템을 찾거나"}, {"start": 278.12, "end": 280.64, "text": "수치를 수정할 때 훨씬 용이하니까요"}, {"start": 280.64, "end": 284.64, "text": "그렇겠네요 레고 블록 찾듯이 뒤지면 안 되니까요"}, {"start": 284.64, "end": 287.59999999999997, "text": "그럼 관리가 편해지는 그 체계적인 서랍장"}, {"start": 287.59999999999997, "end": 291.47999999999996, "text": "즉 데이터 구조의 종류에는 크게 어떤 형태들이 있는 건가요?"}, {"start": 291.47999999999996, "end": 294.59999999999997, "text": "데이터 구조 중 가장 기본이 되는 건 리스트입니다"}, {"start": 294.59999999999997, "end": 298.03999999999996, "text": "이건 연관된 데이터를 배열 형태로 연속적으로 나열해서"}, {"start": 298.03999999999996, "end": 300.32, "text": "순서대로 처리하는 선형 구조죠"}, {"start": 300.32, "end": 302.88, "text": "어 잠깐 그게 정확히 무슨 말이에요"}, {"start": 302.88, "end": 306.88, "text": "연속적으로 나열한다는 게 게임 속에서는 어떤 식으로 작동하는 건가요?"}, {"start": 306.88, "end": 310.03999999999996, "text": "마치 기차 좌석번호표를 생각하시면 됩니다"}, {"start": 310.03999999999996, "end": 312.71999999999997, "text": "데이터가 메모리상에 순서대로 딱 붙어있거든요"}, {"start": 312.72, "end": 315.48, "text": "오 딱 붙어있으면 훑어보긴 좋겠네요"}, {"start": 315.48, "end": 320.24, "text": "네 그래서 서버 입출력이 빈번할 때 검색 속도는 엄청 빠릅니다"}, {"start": 320.24, "end": 321.56, "text": "그런데 문제가 안에 있어요"}, {"start": 321.56, "end": 322.56, "text": "무슨 문제요?"}, {"start": 322.56, "end": 325.40000000000003, "text": "중간에 누가 새치기를 해서 끼어들거나"}, {"start": 325.40000000000003, "end": 327.36, "text": "한 명이 빠지면 어떻게 될까요?"}, {"start": 327.36, "end": 331.20000000000005, "text": "뒤에 있는 좌석번호를 전부 다 밀고 당겨서 재배치해야 하거든요"}, {"start": 331.20000000000005, "end": 334.76000000000005, "text": "그래서 삽입과 삭제가 굉장히 느려지는 특징이 있습니다"}, {"start": 334.76000000000005, "end": 339.76000000000005, "text": "아하 검색은 빠르지만 중간에 뭘 끼워놓기 어렵다는 거군요"}, {"start": 339.76, "end": 343.32, "text": "그럼 반대로 유저가 방금 한 행동을 취소하거나"}, {"start": 343.32, "end": 347.56, "text": "순서를 거꾸로 되돌려야 하는 상황의 데이터는 어떻게 관리되는 건가요?"}, {"start": 347.56, "end": 350.44, "text": "그럴 때 등장하는 게 바로 스택입니다"}, {"start": 350.44, "end": 353.15999999999997, "text": "마지막에 들어온 데이터를 가장 먼저 꺼내는"}, {"start": 353.15999999999997, "end": 356.24, "text": "선입, 후출 방식의 데이터 구조를 스택이라고 부릅니다"}, {"start": 356.24, "end": 358.24, "text": "오 그게 정확히 무슨 말이에요?"}, {"start": 358.24, "end": 361.59999999999997, "text": "먼저 들어온 게 아니라 마지막에 들어온 걸 먼저 뺀다는 게"}, {"start": 361.59999999999997, "end": 363.59999999999997, "text": "직관적으로 잘 와닿지가 않는데요?"}, {"start": 363.59999999999997, "end": 367.88, "text": "우리가 게임 설정창에서 이것저것 건드리다가 작업 취소"}, {"start": 367.92, "end": 370.52, "text": "그러니까 뒤로 가기 버튼을 누를 때를 생각해보세요"}, {"start": 370.52, "end": 372.04, "text": "네네 자주 들죠"}, {"start": 372.04, "end": 375.12, "text": "그때 가장 마지막에 했던 행동 기록부터"}, {"start": 375.12, "end": 379.12, "text": "먼저 꺼내서 지워야 원래 상태로 깔끔하게 돌아갈 수 있거든요"}, {"start": 379.12, "end": 382.92, "text": "식당에서 맨 위에 쌓아둔 접시를 제일 먼저 빼서 쓰는 원리와 같습니다"}, {"start": 382.92, "end": 386.56, "text": "아 설거지 탑처럼 위에서부터 하나씩 치우는 거군요?"}, {"start": 386.56, "end": 387.96, "text": "이해가 확 되네요"}, {"start": 387.96, "end": 390.68, "text": "그럼 뒤로 가기처럼 거꾸로 빼는 게 아니라"}, {"start": 390.68, "end": 393.71999999999997, "text": "접속제가 폭주할 때처럼 온전히 먼저 온 사람부터"}, {"start": 393.71999999999997, "end": 396.4, "text": "공평하게 처리해줘야 할 때는 어떻게 되는 건가요?"}, {"start": 396.4, "end": 398.2, "text": "네 아주 좋은 질문입니다"}, {"start": 398.2, "end": 400.84, "text": "그럴 때는 먼저 들어온 데이터를 무조건 먼저 처리하는"}, {"start": 400.84, "end": 402.76, "text": "선입 선출 방식의 데이터 구조"}, {"start": 402.76, "end": 405.15999999999997, "text": "즉 Q라고 하는 구조를 사용합니다"}, {"start": 405.15999999999997, "end": 406.88, "text": "그게 정확히 무슨 말이에요?"}, {"start": 406.88, "end": 409.35999999999996, "text": "먼저 온 순서대로 처리한다는 원칙이"}, {"start": 409.35999999999996, "end": 412.0, "text": "게임 시스템에선 주로 어디에 적용되나요?"}, {"start": 412.0, "end": 415.79999999999995, "text": "대작게임이 처음 오픈했을 때 혹시 접속 대기열 보신 적 있으시죠?"}, {"start": 415.79999999999995, "end": 418.4, "text": "아우 막 대기열 5천명 이렇게 뜨잖아요"}, {"start": 418.4, "end": 421.47999999999996, "text": "말한 순서대로 쌓는 구조들은 이해했는데"}, {"start": 421.47999999999996, "end": 424.32, "text": "마냥 입력 권한도 제한적이고"}, {"start": 424.32, "end": 427.96, "text": "뿌리에서부터 여러 갈래로 복잡하게 뻗어나가는 데이터들은"}, {"start": 427.96, "end": 429.48, "text": "어떻게 관리하는 건가요?"}, {"start": 429.48, "end": 434.12, "text": "그런 복잡한 상황에서는 비선형 구조인 트리를 씁니다"}, {"start": 434.12, "end": 437.12, "text": "하위 항목으로 갈수록 구조가 복잡해지거나"}, {"start": 437.12, "end": 441.48, "text": "저장값이 제각각인 데이터를 계층적으로 연결해 저장하는 방식이죠"}, {"start": 441.48, "end": 443.92, "text": "어 그게 정확히 무슨 말이에요?"}, {"start": 443.92, "end": 446.76, "text": "계층적이고 복잡한 하위 구조라는 게"}, {"start": 446.76, "end": 449.32, "text": "마치 족보나 가계도 같은 건가요?"}, {"start": 449.32, "end": 450.68, "text": "네 맞습니다"}, {"start": 450.68, "end": 453.8, "text": "대표적으로 게임의 스킬 트리를 보면 딱 알 수 있죠"}, {"start": 453.8, "end": 454.72, "text": "아 스킬 트리"}, {"start": 454.72, "end": 458.56, "text": "네 뿌리가 되는 기본 공격 스킬을 마스터해야만"}, {"start": 458.56, "end": 463.16, "text": "그 가지에 해당하는 화야마법이나 얼음마법을 해금할 수 있잖아요"}, {"start": 463.16, "end": 465.72, "text": "이처럼 조건과 연계성이 아주 복잡하게"}, {"start": 465.72, "end": 467.68, "text": "얽혀있는 데이터를 담을 때 사용합니다"}, {"start": 467.68, "end": 469.36, "text": "아하 그렇군요"}, {"start": 469.36, "end": 472.6, "text": "그럼 지금까지 배운 자료 구조들을 바탕으로"}, {"start": 472.6, "end": 476.6, "text": "실제 현업의 기획자들은 이 수많은 게임 데이터를 현장에서"}, {"start": 476.6, "end": 479.76, "text": "어떤 툴과 방식으로 체계화해서 관리하게 되는 건가요?"}, {"start": 479.76, "end": 483.04, "text": "기획자는 팀원 간 협업과 관리가 용이하도록"}, {"start": 483.04, "end": 487.84000000000003, "text": "엑셀을 활용해서 행과 열로 이루어진 데이터 테이블을 짭니다"}, {"start": 487.84000000000003, "end": 492.32, "text": "그리고 여기서 모든 데이트는 절대 중복되거나 변해서는 안 되는"}, {"start": 492.32, "end": 495.28000000000003, "text": "고유키, 즉 고유 아이디를 가져야만 합니다"}, {"start": 495.28000000000003, "end": 497.72, "text": "그게 정확히 무슨 말이에요?"}, {"start": 497.72, "end": 500.0, "text": "게임 서비스가 시작된 이후에"}, {"start": 500.0, "end": 503.84000000000003, "text": "약간 편의를 위해서 아이템의 고유 아이디 값을 수정하면"}, {"start": 503.84000000000003, "end": 506.12, "text": "안 되는 치명적인 이유라도 있나요?"}, {"start": 506.12, "end": 507.6, "text": "아주 치명적이죠"}, {"start": 507.6, "end": 512.0, "text": "예를 들어서 1111060이라는 숫자로 된"}, {"start": 512.0, "end": 514.72, "text": "빨간 포션의 고유 아이디가 있다고 치죠"}, {"start": 514.72, "end": 518.12, "text": "이걸 라이브 서비스 도중에 다른 번호로 바꿔버리면 어떻게 될까요?"}, {"start": 518.12, "end": 520.6, "text": "글쎄요, 인벤토리에서 사라지나요?"}, {"start": 520.6, "end": 522.2, "text": "더 끔찍합니다"}, {"start": 522.2, "end": 524.92, "text": "시스템이 캐릭터 체력을 회복시키려고"}, {"start": 524.92, "end": 528.24, "text": "원래 아이디를 막 찾으려다 영원히 못 찾게 되거든요"}, {"start": 528.24, "end": 528.8, "text": "헉!"}, {"start": 528.8, "end": 531.96, "text": "결국 데이터 없음 오류로 무한 루프에 빠져서"}, {"start": 531.96, "end": 535.28, "text": "게임 서버 전체가 셧다운되는 대참사가 벌어질 수 있습니다"}, {"start": 535.28, "end": 539.64, "text": "와, 포션 하나도 번호 바꾸는 게 그렇게 치명적이네요"}, {"start": 539.64, "end": 544.1999999999999, "text": "그럼 유저들의 레벨이나 인벤토리처럼 실시간으로 쉴 새 없이 변하는"}, {"start": 544.1999999999999, "end": 548.64, "text": "엄청난 양의 정보들은 어디에, 어떻게 들어가게 되는 건가요?"}, {"start": 548.64, "end": 550.72, "text": "그래서 데이터를 분리합니다"}, {"start": 550.72, "end": 555.52, "text": "캐릭터 기본 능력치 같은 고정된 데이터는 클라이언트 테이블에 두고요"}, {"start": 555.52, "end": 560.08, "text": "유저의 경험치나 접속 기록처럼 끊임없이 변하는 유동적인 내용은"}, {"start": 560.08, "end": 563.56, "text": "서버 테이블의 데이터베이스에 완전히 분리해서 저장합니다"}, {"start": 563.56, "end": 564.72, "text": "어, 잠시만요"}, {"start": 564.72, "end": 566.56, "text": "그게 정확히 무슨 말이에요?"}, {"start": 566.56, "end": 569.5999999999999, "text": "고정된 것과 유동적인 것을 굳이 나누고"}, {"start": 569.5999999999999, "end": 574.4799999999999, "text": "또 데이터 테이블에는 유저가 바꿀 수 없는 구현의 영역만 넣어야 한다는 건"}, {"start": 574.4799999999999, "end": 576.28, "text": "시스템 적어도 어떤 의미죠?"}, {"start": 576.28, "end": 579.4, "text": "쉽게 말해서 보안과 안정성 때문입니다"}, {"start": 579.4, "end": 582.9599999999999, "text": "몬스터 테이블에 AI 패턴 테이블을 연동시켜 두듯이"}, {"start": 582.9599999999999, "end": 585.64, "text": "해킹을 막고 정보 검증을 확실히 하기 위해서입니다"}, {"start": 585.64, "end": 588.1199999999999, "text": "아, 치트 프로그램 같은 거 막으려고요?"}, {"start": 588.1199999999999, "end": 589.4, "text": "네, 맞습니다"}, {"start": 589.4, "end": 594.28, "text": "기획자가 설정한 절대적인 법칙들만 클라이언트 쪽의 뼈대로 딱 남겨두고"}, {"start": 594.28, "end": 596.04, "text": "계속 변하는 결과물들은"}, {"start": 596.04, "end": 600.0, "text": "유저가 건드릴 수 없는 서버에서 별도로 굴리면서 관리한다는 뜻입니다"}, {"start": 600.0, "end": 601.1999999999999, "text": "그렇군요"}, {"start": 601.1999999999999, "end": 604.52, "text": "데이터를 그렇게 철저히 분리하고 연동해야 한다면"}, {"start": 604.52, "end": 607.76, "text": "기획자가 처음 이 거대한 테이블 구조를 짤 때"}, {"start": 607.76, "end": 610.1999999999999, "text": "무조건 지켜야 하는 작업 순서나"}, {"start": 610.1999999999999, "end": 612.92, "text": "절대 하면 안 되는 금기 사항은 무엇인가요?"}, {"start": 612.92, "end": 614.76, "text": "아주 중요한 룰이 있습니다"}, {"start": 614.76, "end": 620.04, "text": "시스템을 분석해서 첫 번째 컬럼에 무조건 ID를 배치하고"}, {"start": 620.04, "end": 623.24, "text": "영문 이름과 타입을 명시해야 합니다"}, {"start": 623.28, "end": 628.04, "text": "그리고 절대로 테이블 자체로 게임의 기능을 구현하려고 해서는"}, {"start": 628.04, "end": 630.0, "text": "안 된다는 원칙을 지켜야 합니다"}, {"start": 630.0, "end": 632.6800000000001, "text": "어, 그게 정확히 무슨 말이에요?"}, {"start": 632.6800000000001, "end": 634.5600000000001, "text": "테이블 안에 함수를 넣거나"}, {"start": 634.5600000000001, "end": 637.96, "text": "기능이 자동으로 돌아가게 만들면 안 된다는 게"}, {"start": 637.96, "end": 640.44, "text": "초보자들이 가장 많이 하는 셀수라던데"}, {"start": 640.44, "end": 641.44, "text": "왜 그런가요?"}, {"start": 641.44, "end": 642.96, "text": "훨씬 편할 것 같은데요?"}, {"start": 642.96, "end": 647.4, "text": "그게 테이블의 본질을 망각한 행동이기 때문입니다"}, {"start": 647.4, "end": 651.2, "text": "테이블의 본질은 어디까지나 데이터 관리일 뿐이거든요"}, {"start": 651.2, "end": 652.04, "text": "아하"}, {"start": 652.04, "end": 656.24, "text": "만약 특정 시간마다 몬스터가 소환되는 그 로직 자체를"}, {"start": 656.24, "end": 659.92, "text": "기획자가 엑셀 테이블 안에 함수로 묶여넣어버리면요"}, {"start": 659.92, "end": 664.0799999999999, "text": "나중에 프로그래머의 코드 개발 영역과 정면으로 꼬여버리게 됩니다"}, {"start": 664.0799999999999, "end": 665.52, "text": "허, 그럼 어떻게 되나요?"}, {"start": 665.52, "end": 669.52, "text": "전체 시스템 구조가 완전히 산산조각이 나버리는 거죠"}, {"start": 669.52, "end": 671.56, "text": "역할의 분리가 무너지는 겁니다"}, {"start": 671.56, "end": 674.92, "text": "와, 오늘 정말 깊은 곳까지 짚어봤네요"}, {"start": 674.92, "end": 676.9599999999999, "text": "처음에는 막연하게"}, {"start": 676.9599999999999, "end": 680.16, "text": "도대체 우리 시스템에 어떤 정보가 필요한가"}, {"start": 680.16, "end": 681.9599999999999, "text": "라는 질문에서 출발해서"}, {"start": 681.9599999999999, "end": 685.9599999999999, "text": "리스트, 스택, 큐, 트리 로 정보를 구성하는"}, {"start": 685.9599999999999, "end": 687.92, "text": "논리적인 방법들을 배웠잖아요"}, {"start": 687.92, "end": 689.64, "text": "네, 아주 중요한 뼈대들이었죠"}, {"start": 689.64, "end": 692.04, "text": "그리고 그 수백만 개의 수치들을"}, {"start": 692.04, "end": 695.16, "text": "엑셀 테이블과 데이터베이스로 분리해서"}, {"start": 695.16, "end": 697.4399999999999, "text": "오차 없이 관리해내는 기획자들의"}, {"start": 697.4399999999999, "end": 700.4, "text": "꼼꼼한 설계 과정을 쫙 되짚어봤습니다"}, {"start": 700.4, "end": 703.24, "text": "청취자님도 이제 게임을 플레이 하실 때"}, {"start": 703.24, "end": 706.6, "text": "보이지 않던 거대한 뼈대가 느껴지시길 바랍니다"}, {"start": 706.6, "end": 709.68, "text": "우리가 게임 속에서 가볍게 휘두르는 칼 한 번"}, {"start": 709.68, "end": 711.9599999999999, "text": "마시는 포션 한 병의 이면에는"}, {"start": 711.9599999999999, "end": 715.3599999999999, "text": "사실 수백만 개의 숫자와 구조가 맞물려 돌아가는"}, {"start": 715.3599999999999, "end": 718.0799999999999, "text": "데이터의 우주가 존재합니다"}, {"start": 718.0799999999999, "end": 720.3599999999999, "text": "결국 훌륭한 게임 기획이란"}, {"start": 720.3599999999999, "end": 722.7199999999999, "text": "눈에 보이는 화려한 그래픽 이전에"}, {"start": 722.7199999999999, "end": 725.3199999999999, "text": "보이지 않는 데이터 테이블의 열과 행을"}, {"start": 725.3199999999999, "end": 729.3599999999999, "text": "얼마나 견고하고 철저하게 설계하느냐에 달려 있다는 사실이"}, {"start": 729.3599999999999, "end": 731.64, "text": "오늘 분석이 남긴 가장 큰 통찰입니다"}, {"start": 731.64, "end": 735.16, "text": "확 넓혀줄 흥미롭고 깊이 있는 자료와 함께"}, {"start": 735.16, "end": 736.92, "text": "다시 돌아오겠습니다"}, {"start": 736.92, "end": 738.5999999999999, "text": "함께 해주셔서 감사합니다"}];
+
+let currentSlide = 0;
+let isAutoSync = true;
+let lastSubIdx = -1;
+const audio = document.getElementById('audio');
+const playBtn = document.getElementById('play-btn');
+const timeDisplay = document.getElementById('time-display');
+const seekBar = document.getElementById('seek-bar');
+
+// 오디오 포함 슬라이드를 시작시간 순으로 정렬한 인덱스 (동기화용)
+const audioSlides = SLIDES
+    .map((s, i) => ({idx: i, start: s.start, end: s.end, hasAudio: s.hasAudio}))
+    .filter(s => s.hasAudio && s.start !== null)
+    .sort((a, b) => a.start - b.start);
+
+function init() {
+    buildNav();
+    buildIndex();
+    buildAudioMap();
+    showSlide(0);
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    // 오디오 메타데이터 로드 시 시크바 max 갱신
+    audio.addEventListener('loadedmetadata', updateSeekBarMax);
+    audio.addEventListener('durationchange', updateSeekBarMax);
+    // canplay 이벤트도 대비 (일부 브라우저/포맷에서 loadedmetadata가 늦게 발생)
+    audio.addEventListener('canplay', updateSeekBarMax);
+    // 슬라이더 드래그 시: 오디오 위치 이동 + 즉시 슬라이드 동기화
+    seekBar.addEventListener('input', () => {
+        audio.currentTime = seekBar.value;
+        isAutoSync = true;
+        syncSlideToTime(audio.currentTime);
+        updateSubtitle(audio.currentTime);
+    });
+    // 일시정지 상태에서 seek 완료 시에도 슬라이드 동기화
+    audio.addEventListener('seeked', () => {
+        syncSlideToTime(audio.currentTime);
+        updateTimeDisplay();
+        updateSubtitle(audio.currentTime);
+    });
+}
+
+function updateSeekBarMax() {
+    if (audio.duration && isFinite(audio.duration)) {
+        seekBar.max = audio.duration;
+        updateTimeDisplay();
+    }
+}
+
+function buildNav() {
+    const nav = document.getElementById('slide-nav');
+    SLIDES.forEach((slide, i) => {
+        const dot = document.createElement('button');
+        dot.className = 'nav-dot ' + (slide.hasAudio ? 'has-audio' : 'no-audio');
+        dot.textContent = slide.id.replace('P', '');
+        dot.title = slide.id + ' — ' + slide.title;
+        dot.onclick = () => { isAutoSync = false; showSlide(i); };
+        nav.appendChild(dot);
+    });
+}
+
+function buildIndex() {
+    const list = document.getElementById('index-list');
+    SLIDES.forEach((slide, i) => {
+        const item = document.createElement('div');
+        item.className = 'index-item' + (slide.hasAudio ? ' has-audio' : '');
+        item.innerHTML = '<span class="idx-id">' + slide.id + '</span><span class="idx-title">' + slide.title + '</span>';
+        item.onclick = () => { isAutoSync = false; showSlide(i); };
+        list.appendChild(item);
+    });
+}
+
+function buildAudioMap() {
+    const map = document.getElementById('audio-map');
+    if (!map) return;
+    // 오디오 전체 길이: audioSlides의 마지막 end 또는 audio.duration
+    const totalDur = audioSlides.length > 0
+        ? Math.max(...audioSlides.map(s => s.end || 0))
+        : 1;
+    audioSlides.forEach((s, i) => {
+        const slide = SLIDES[s.idx];
+        const left = (s.start / totalDur) * 100;
+        const width = ((s.end - s.start) / totalDur) * 100;
+        const seg = document.createElement('div');
+        seg.className = 'map-segment';
+        seg.dataset.idx = s.idx;
+        seg.style.left = left + '%';
+        seg.style.width = width + '%';
+        seg.textContent = slide.id;
+        seg.title = slide.id + ' — ' + slide.title;
+        seg.onclick = () => {
+            audio.currentTime = s.start;
+            isAutoSync = true;
+            syncSlideToTime(s.start);
+        };
+        map.appendChild(seg);
+    });
+}
+
+function updateAudioMap(currentIdx) {
+    document.querySelectorAll('.map-segment').forEach(seg => {
+        seg.classList.toggle('active', parseInt(seg.dataset.idx) === currentIdx);
+    });
+}
+
+function showSlide(index) {
+    if (index < 0 || index >= SLIDES.length) return;
+    currentSlide = index;
+    const slide = SLIDES[index];
+    document.getElementById('slide-id').textContent = slide.id;
+    document.getElementById('slide-title').textContent = slide.title;
+    const contentEl = document.getElementById('slide-content');
+    contentEl.style.animation = 'none';
+    contentEl.offsetHeight; // 리플로우 트리거
+    contentEl.style.animation = '';
+    contentEl.innerHTML = slide.content;
+    const badge = document.getElementById('slide-badge');
+    if (slide.hasAudio) {
+        badge.textContent = '🎵 오디오 포함';
+        badge.className = 'badge-audio';
+    } else {
+        badge.textContent = '📖 교안 전용';
+        badge.className = 'badge-no-audio';
+    }
+    // 네비게이션 도트 활성화
+    document.querySelectorAll('.nav-dot').forEach((dot, i) => {
+        dot.classList.toggle('active', i === index);
+    });
+    // 인덱스 패널 활성화
+    document.querySelectorAll('.index-item').forEach((item, i) => {
+        item.classList.toggle('active', i === index);
+        if (i === index) item.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+    });
+    // 오디오 맵 활성화
+    updateAudioMap(index);
+
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+// 시간 기반 슬라이드 동기화 (정렬된 audioSlides 사용)
+function syncSlideToTime(t) {
+    let targetIdx = -1;
+    for (let i = audioSlides.length - 1; i >= 0; i--) {
+        if (t >= audioSlides[i].start) {
+            targetIdx = audioSlides[i].idx;
+            break;
+        }
+    }
+    if (targetIdx >= 0 && targetIdx !== currentSlide) {
+        showSlide(targetIdx);
+    }
+}
+
+function onTimeUpdate() {
+    const t = audio.currentTime;
+    seekBar.value = t;
+    updateTimeDisplay();
+    updateSubtitle(t);
+    if (!isAutoSync) return;
+    syncSlideToTime(t);
+}
+
+function updateTimeDisplay() {
+    const cur = formatTime(audio.currentTime);
+    const dur = formatTime(audio.duration || 0);
+    timeDisplay.textContent = cur + ' / ' + dur;
+}
+
+function formatTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function togglePlay() {
+    if (audio.paused) {
+        audio.play();
+        playBtn.textContent = '⏸';
+        isAutoSync = true;
+    } else {
+        audio.pause();
+        playBtn.textContent = '▶';
+    }
+}
+
+function changeSpeed(val) {
+    audio.playbackRate = parseFloat(val);
+}
+
+function skipTime(sec) {
+    audio.currentTime = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + sec));
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+    if (e.code === 'ArrowLeft') { showSlide(currentSlide - 1); isAutoSync = false; }
+    if (e.code === 'ArrowRight') { showSlide(currentSlide + 1); isAutoSync = false; }
+});
+
+function updateSubtitle(t) {
+    if (typeof TRANSCRIPT === 'undefined' || TRANSCRIPT.length === 0) return;
+    const idx = findTranscriptIdx(t);
+    if (idx === lastSubIdx) return;
+    lastSubIdx = idx;
+    const el = document.getElementById('subtitle-text');
+    if (el) el.textContent = idx >= 0 ? TRANSCRIPT[idx].text : '';
+}
+
+function findTranscriptIdx(t) {
+    let lo = 0, hi = TRANSCRIPT.length - 1, result = -1;
+    while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (TRANSCRIPT[mid].start <= t) { result = mid; lo = mid + 1; }
+        else { hi = mid - 1; }
+    }
+    if (result >= 0 && t <= TRANSCRIPT[result].end) return result;
+    return -1;
+}
+
+init();
+
+</script>
+</body>
+</html>
